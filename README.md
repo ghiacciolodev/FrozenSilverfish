@@ -85,7 +85,7 @@ The plugin uses only the Paper API. It has no other dependencies.
 
 ## Installation
 
-1. Download the jar from the project's releases, if one is available, or build it yourself (see [Building from source](#building-from-source)).
+1. Download the jar from the [releases page](https://github.com/ghiacciolodev/FrozenSilverfish/releases), or build it yourself (see [Building from source](#building-from-source)).
 2. Put `FrozenSilverfish-<version>.jar` in the `plugins` folder of your server.
 3. Restart the server.
 
