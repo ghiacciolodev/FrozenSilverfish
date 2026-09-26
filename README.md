@@ -105,11 +105,11 @@ On the first start the plugin creates `plugins/FrozenSilverfish/config.yml` and 
 
 The config file is `plugins/FrozenSilverfish/config.yml`. After changing it, run `/fsf reload`. You don't need to restart the server.
 
-This is the default config:
+This is the default config. It is also the recommended one, see [Recommended configuration](#recommended-configuration):
 
 ```yaml
 enabled: true
-disable-collisions: false
+disable-collisions: true
 prevent-drowning: true
 worlds: []
 ```
@@ -127,14 +127,14 @@ Turns the plugin on or off.
 
 ### disable-collisions
 
-Default: `false`
+Default: `true`
 
 Also turns off collisions for frozen silverfish. See [Collisions](#collisions) for the details.
 
 - `false`: the plugin doesn't touch collisions. Frozen silverfish push each other and other mobs like normal, and entity cramming still kills them when more than 24 are in the same spot. If you switch from `true` to `false`, the collisions the plugin turned off are turned back on.
 - `true`: frozen silverfish don't push each other or other mobs, and entity cramming doesn't affect them. Together with the AI off this saved about 35% to 57% on land and 42% to 49% in water, compared with about 20% to 35% with the AI off alone. The difference grows with the number of silverfish that are close together.
 
-The risk is that nothing limits how many silverfish can pile up. This is why the default is `false`. Turn it on only if silverfish are killed soon after they arrive, and check that your farm still works.
+The risk is that nothing limits how many silverfish can pile up. It is on by default because it gave the biggest saving in the tests and farms like ours kill silverfish as soon as they arrive. Set it to `false` if silverfish in your farm can wait for a long time before being killed, or if your farm relies on mobs pushing each other.
 
 ### prevent-drowning
 
@@ -160,7 +160,7 @@ Keep in mind that the plugin freezes every silverfish in an active world, not on
 
 ### Recommended configuration
 
-For a farm like ours, where silverfish travel through water and a player kills them as soon as they reach the killing chamber:
+The recommended configuration is the default one. It is meant for a farm like ours, where silverfish travel through water and a player kills them as soon as they reach the killing chamber:
 
 ```yaml
 enabled: true
@@ -176,7 +176,7 @@ This is what the tests support:
 - With `prevent-drowning: true` no frozen silverfish drowned, in the farm or in the benchmark.
 - With `disable-collisions: true`, 40 silverfish in the same block all survived. This is the part to watch: if nobody kills them, they won't be limited by cramming.
 
-If you can't be sure that silverfish are always killed soon after they arrive, or if your farm relies on mobs pushing each other, use the default config instead. It still saves about 20% to 35% with no change in how silverfish interact with other mobs.
+If you can't be sure that silverfish are always killed soon after they arrive, or if your farm relies on mobs pushing each other, set `disable-collisions: false`. With only the AI off it still saves about 20% to 35%, with no change in how silverfish interact with other mobs.
 
 Set `worlds` if you want silverfish outside your farm world to keep their AI, as explained above.
 
@@ -199,7 +199,7 @@ All 28 checks passed, with no errors or warnings in the console.
 
 | What was tested | How | Result |
 |---|---|---|
-| Freeze | Summon a silverfish with the default config | AI off, `frozen_silverfish` tag, collisions still on, no marker |
+| Freeze | Summon a silverfish with `disable-collisions: false` | AI off, `frozen_silverfish` tag, collisions still on, no marker |
 | Gravity | Summon a silverfish 5 blocks above the ground | It falls to the ground and takes fall damage |
 | No movement | Watch the same silverfish for 3 seconds | Its position doesn't change |
 | Water transport | Summon a silverfish at the start of a flowing water channel | It is carried more than 3 blocks along the channel in 5 seconds |
@@ -247,8 +247,8 @@ There were two scenarios:
 For each scenario and number of silverfish there were three phases:
 
 1. AI on: the plugin disabled. This is how silverfish behave without the plugin.
-2. AI off: the plugin enabled with `disable-collisions: false` (the default config).
-3. AI off and no collisions: the plugin enabled with `disable-collisions: true` (all options on).
+2. AI off: the plugin enabled with `disable-collisions: false`.
+3. AI off and no collisions: the plugin enabled with `disable-collisions: true` (the default config, all options on).
 
 In every phase the silverfish from the previous phase were removed and new ones were summoned at random positions on the floor. After 70 seconds the tick time was read with Paper's `/mspt` command (average over the last 10 seconds). The number of silverfish alive was checked at the end of each phase, and none had died in any phase.
 
@@ -280,8 +280,8 @@ The two passes agree within a few points, so the order of the phases didn't chan
 
 What this means:
 
-- With the default config (AI off), silverfish cost about 20% to 35% less than normal ones.
-- With all options on (AI off and no collisions), they cost about 35% to 57% less. With many silverfish close together, that is about half.
+- With only the AI off (`disable-collisions: false`), silverfish cost about 20% to 35% less than normal ones.
+- With the default config (AI off and no collisions), they cost about 35% to 57% less. With many silverfish close together, that is about half.
 - Silverfish still run their physics, and collisions between them get more expensive the more they are packed together. That is why turning off collisions matters more at 2000 silverfish than at 500.
 - Silverfish in water cost more than on land in every phase, but the saving is about the same.
 - In the water scenario every frozen silverfish was out of air, so drowning prevention was working for all of them at the same time. Its cost is already included in the water numbers.

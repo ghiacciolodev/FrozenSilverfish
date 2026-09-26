@@ -51,7 +51,7 @@ public final class FrozenSilverfish extends JavaPlugin implements Listener, TabE
     private void loadSettings() {
         reloadConfig();
         enabled = getConfig().getBoolean("enabled", true);
-        disableCollisions = getConfig().getBoolean("disable-collisions", false);
+        disableCollisions = getConfig().getBoolean("disable-collisions", true);
         preventDrowning = getConfig().getBoolean("prevent-drowning", true);
         worlds = new HashSet<>(getConfig().getStringList("worlds"));
     }
