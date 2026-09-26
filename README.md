@@ -48,18 +48,28 @@ The vanilla `NoAI` tag (`setAI(false)` in the API) is not the same thing. It tur
 - When the plugin starts, to all silverfish that are already loaded.
 - When you run `/fsf reload`, to all loaded silverfish.
 
-Each silverfish changed by the plugin gets the scoreboard tag `frozen_silverfish`, so you can always tell which ones were modified. For example `/kill @e[type=silverfish,tag=frozen_silverfish]` kills only those.
+Each silverfish frozen by the plugin gets the scoreboard tag `frozen_silverfish`, so you can always tell which ones were modified. For example `/kill @e[type=silverfish,tag=frozen_silverfish]` kills only those.
+
+### Only what the plugin changed
+
+The plugin keeps track of what it changed itself, and only ever undoes that. This matters if other plugins on your server also touch silverfish, for example a mob stacker.
+
+- It only freezes silverfish that have their AI on. If a silverfish already has its AI off without the `frozen_silverfish` tag, some other plugin did that, so FrozenSilverfish leaves it alone: it doesn't tag it, doesn't change its collisions and never turns its AI back on.
+- It only turns collisions off on silverfish it froze, and only if their collisions are on. When it does, it stores a marker (`frozensilverfish:collisions_off`) in the entity's persistent data. If collisions were already off because of another plugin, there's no marker and the plugin doesn't touch them.
+- With `disable-collisions: false` the plugin doesn't touch collisions at all, except to turn them back on where its own marker is.
+
+Because the only silverfish it freezes are ones that had their AI on, "restoring" always means turning the AI back on. There's no previous state to remember.
 
 ### What is saved on the entity
 
 This matters for reloading and uninstalling.
 
 - The aware flag is saved with the entity. A frozen silverfish stays frozen after a restart, after its chunk is unloaded and loaded again, and even after the plugin is removed.
-- The `frozen_silverfish` tag is saved with the entity.
-- The collision setting is not saved. The plugin sets it again every time a silverfish is loaded.
+- The `frozen_silverfish` tag and the `frozensilverfish:collisions_off` marker are saved with the entity.
+- The collision setting itself is not saved. When a silverfish with the marker is loaded again, the plugin turns its collisions off again.
 - Drowning prevention is not saved. The plugin does it while it is running.
 
-When the plugin is turned off in the config, or a world is removed from the `worlds` list, every silverfish with the tag is restored: its AI is turned back on, its collisions are turned back on and the tag is removed. This happens to loaded silverfish when you run `/fsf reload`, and to the others when their chunk is loaded.
+When the plugin is turned off in the config, or a world is removed from the `worlds` list, the plugin undoes what it changed. Silverfish with the tag get their AI back and lose the tag. Silverfish with the marker get their collisions back and lose the marker. This happens to loaded silverfish when you run `/fsf reload`, and to the others when their chunk is loaded. Anything another plugin changed stays as it is.
 
 ### Drowning
 
@@ -69,7 +79,7 @@ With `prevent-drowning: true` (the default) the plugin cancels drowning damage f
 
 ### Collisions
 
-With `disable-collisions: true` the plugin also calls `setCollidable(false)` on frozen silverfish. They stop pushing each other and other mobs, and they are no longer affected by entity cramming. In the benchmark below this saved a lot of time when many silverfish were packed together.
+With `disable-collisions: true` the plugin also calls `setCollidable(false)` on the silverfish it froze. They stop pushing each other and other mobs, and they are no longer affected by entity cramming. In the benchmark below this saved a lot of time when many silverfish were packed together.
 
 Two things to know:
 
@@ -112,8 +122,8 @@ Default: `true`
 
 Turns the plugin on or off.
 
-- `true`: every silverfish in the active worlds gets its AI turned off. On its own this saved about 30% of the time silverfish cost.
-- `false`: the plugin stops freezing silverfish, and the ones it froze get their AI back. Loaded silverfish are restored on `/fsf reload`, the others when their chunk is loaded. Use this before uninstalling, see [Uninstalling](#uninstalling).
+- `true`: every silverfish in the active worlds gets its AI turned off. On its own this saved about 20% to 35% of the time silverfish cost.
+- `false`: the plugin stops freezing silverfish, and undoes what it changed: the ones it froze get their AI back, and the ones it removed collisions from get them back. Loaded silverfish are restored on `/fsf reload`, the others when their chunk is loaded. Use this before uninstalling, see [Uninstalling](#uninstalling).
 
 ### disable-collisions
 
@@ -121,8 +131,8 @@ Default: `false`
 
 Also turns off collisions for frozen silverfish. See [Collisions](#collisions) for the details.
 
-- `false`: frozen silverfish push each other and other mobs like normal, and entity cramming still kills them when more than 24 are in the same spot.
-- `true`: frozen silverfish don't push each other or other mobs, and entity cramming doesn't affect them. Together with the AI off this saved about 57% on land and 49% in water, compared with about 30% and 26% with the AI off alone. The difference grows with the number of silverfish that are close together.
+- `false`: the plugin doesn't touch collisions. Frozen silverfish push each other and other mobs like normal, and entity cramming still kills them when more than 24 are in the same spot. If you switch from `true` to `false`, the collisions the plugin turned off are turned back on.
+- `true`: frozen silverfish don't push each other or other mobs, and entity cramming doesn't affect them. Together with the AI off this saved about 35% to 57% on land and 42% to 49% in water, compared with about 20% to 35% with the AI off alone. The difference grows with the number of silverfish that are close together.
 
 The risk is that nothing limits how many silverfish can pile up. This is why the default is `false`. Turn it on only if silverfish are killed soon after they arrive, and check that your farm still works.
 
@@ -161,12 +171,12 @@ worlds: []
 
 This is what the tests support:
 
-- It gave the biggest saving in the benchmark: 37% to 57% less time spent on silverfish on land and 42% to 49% in water, depending on how many there were.
+- It gave the biggest saving in the benchmark: 35% to 57% less time spent on silverfish on land and 42% to 49% in water, depending on how many there were.
 - In a test farm with 4 stations of armadillos, silverfish still travelled along the water streams to the killing chamber and died to a Sweeping Edge hit on the armor stand with these settings.
 - With `prevent-drowning: true` no frozen silverfish drowned, in the farm or in the benchmark.
 - With `disable-collisions: true`, 40 silverfish in the same block all survived. This is the part to watch: if nobody kills them, they won't be limited by cramming.
 
-If you can't be sure that silverfish are always killed soon after they arrive, or if your farm relies on mobs pushing each other, use the default config instead. It still saves about 20% to 30% with no change in how silverfish interact with other mobs.
+If you can't be sure that silverfish are always killed soon after they arrive, or if your farm relies on mobs pushing each other, use the default config instead. It still saves about 20% to 35% with no change in how silverfish interact with other mobs.
 
 Set `worlds` if you want silverfish outside your farm world to keep their AI, as explained above.
 
@@ -175,7 +185,7 @@ Set `worlds` if you want silverfish outside your farm world to keep their AI, as
 All commands need the `frozensilverfish.admin` permission, which ops have by default. `/fsf` is a short alias for `/frozensilverfish`.
 
 - `/fsf reload` reloads the config, applies it to all loaded silverfish and tells you how many were updated. Silverfish that were already in the right state are not counted.
-- `/fsf status` shows whether the plugin is enabled and in which worlds, how many silverfish are loaded, how many of them have no AI, and whether collisions are disabled and drowning is prevented.
+- `/fsf status` shows whether the plugin is enabled and in which worlds, how many silverfish are loaded, how many of them have no AI, how many of those were frozen by this plugin, and whether collisions are disabled and drowning is prevented. "Without AI" can be higher than "frozen by this plugin" if another plugin turned off the AI of some silverfish.
 
 ## Test results
 
@@ -183,26 +193,45 @@ All tests were run on a local test server: Paper 26.2 build 129, Java 25.0.4, Wi
 
 ### Functional tests
 
+These tests were run on version 1.0.1 with a script that sends commands to the server through RCON and checks the result. Commands can't show whether an entity is collidable or has had its AI turned off by the API, so for these checks a small helper plugin was loaded on the test server only. It reads those values and can also act as "another plugin" that turns off the AI or the collisions of a silverfish. The helper is not part of this project.
+
+All 28 checks passed, with no errors or warnings in the console.
+
 | What was tested | How | Result |
 |---|---|---|
-| Startup | Start the server with the plugin | No errors or warnings from the plugin in the console |
-| Gravity | Summon a silverfish 5 blocks above the ground | It falls to the ground, takes fall damage (8 to 6 health) and then doesn't move by itself. It has the `frozen_silverfish` tag and no NoAI tag |
-| Water transport | Summon a silverfish in a flowing water channel | It is carried along the channel (from x 6.5 to x 13.2 in 5 seconds) |
-| Damage | `/damage` on a frozen silverfish | Damage is applied normally |
-| Farm | A farm with 4 stations of armadillos with Infested, water streams and a killing chamber | Silverfish reach the killing chamber and die to a Sweeping Edge sword hit on the armor stand |
-| Status | `/fsf status` with 3 and 4 loaded silverfish, and after unloading a chunk | Counts are correct, including after the chunk unload |
-| Disable | `enabled: false` and `/fsf reload` | Loaded silverfish get their AI back, lose the tag and walk away (10 to 20 blocks in a few seconds) |
-| Disable, unloaded chunk | Freeze a silverfish, unload its chunk, disable the plugin, load the chunk | The silverfish is restored when the chunk loads |
-| World filter | `worlds: [world_nether]` and `/fsf reload` | Silverfish in the overworld get their AI back. Setting `worlds: []` freezes them again |
-| Restart | Stop and start the server | Silverfish are still frozen after the restart |
-| Collisions and cramming | 40 frozen silverfish in the same block, `max_entity_cramming` at 24 | With `disable-collisions: true` all 40 are still alive after 15 seconds. With `false`, cramming brings them down to 24 within 5 seconds |
-| Drowning, AI on | A normal silverfish in water 2 blocks deep | It swims up and still has full air and health after 25 seconds |
-| Drowning, frozen | A frozen silverfish in the same water, `prevent-drowning: false` | It sinks and drowns after about 19 seconds |
-| Drowning prevented | Same test with `prevent-drowning: true` | After 30 seconds it is out of air but still at full health |
+| Freeze | Summon a silverfish with the default config | AI off, `frozen_silverfish` tag, collisions still on, no marker |
+| Gravity | Summon a silverfish 5 blocks above the ground | It falls to the ground and takes fall damage |
+| No movement | Watch the same silverfish for 3 seconds | Its position doesn't change |
+| Water transport | Summon a silverfish at the start of a flowing water channel | It is carried more than 3 blocks along the channel in 5 seconds |
+| Damage | `/damage` 3 on a frozen silverfish | Health goes from 8 to 5 |
+| Collisions off | `disable-collisions: true` and `/fsf reload` | Collisions off, marker added |
+| Collisions back on | `disable-collisions: false` and `/fsf reload` | Collisions on, marker removed |
+| Cramming, no collisions | 40 frozen silverfish in the same block, `max_entity_cramming` at 24, collisions off | All 40 still alive after 15 seconds |
+| Cramming, collisions | Same silverfish after turning collisions back on | Cramming brings them down to 24 or fewer |
+| AI turned off by another plugin | The helper turns off the AI of a silverfish before FrozenSilverfish sees it, with `disable-collisions: true` | FrozenSilverfish doesn't tag it and doesn't change its collisions |
+| Same, plugin disabled | `enabled: false` and `/fsf reload` | That silverfish still has its AI off |
+| Collisions turned off by another plugin, option off | The helper turns off collisions of a frozen silverfish, `disable-collisions: false`, `/fsf reload` | Collisions stay off |
+| Same, plugin disabled | `enabled: false` and `/fsf reload` | AI back on, tag removed, collisions still off |
+| Collisions turned off by another plugin, option on | The helper turns off collisions, then `disable-collisions: true` | No marker is added |
+| Same, option off again | `disable-collisions: false` | Collisions stay off |
+| Status | Compare `/fsf status` with counts from `/execute if entity` | Loaded and frozen counts match |
+| World filter | `worlds: [world_nether]` | Silverfish in the overworld are restored |
+| World filter back | `worlds: []` | Frozen again, collisions off again |
+| Chunk unload | Freeze a silverfish in a far chunk with collisions off, unload the chunk | The silverfish is no longer loaded |
+| Chunk load | Load the chunk again | Still frozen, collisions off again |
+| Disabled while unloaded | Unload the chunk, `enabled: false`, load the chunk | AI back on, collisions back on, tag and marker removed |
+| Drowning, option off | Frozen silverfish in water 2 blocks deep, `prevent-drowning: false` | It drowns within 25 seconds |
+| Drowning, option on | Same with `prevent-drowning: true` | After 30 seconds it is out of air but at full health |
+| Drowning, AI on | Plugin disabled, same water | The silverfish swims and is at full health after 25 seconds |
+| Before restart | Freeze a silverfish with collisions off | AI off, collisions off, marker |
+| After restart | Stop and start the server | Still frozen, collisions off again |
+| Startup | Start the server | No errors or warnings from the plugin |
+
+Tested by hand on version 1.0.0, in a test farm with 4 stations of armadillos with Infested, water streams and a killing chamber: silverfish reach the killing chamber and die to a Sweeping Edge sword hit on the armor stand, with both `disable-collisions: false` and `true`. The changes in 1.0.1 only affect silverfish whose AI or collisions were changed by another plugin, so they don't change this.
 
 ### Performance benchmark
 
-The goal was to measure how much time silverfish cost per server tick without the plugin, with the plugin, and with the plugin and all its options on. This was run with the final version of the plugin, with `prevent-drowning: true` in every phase.
+The goal was to measure how much time silverfish cost per server tick without the plugin, with the plugin, and with the plugin and all its options on. `prevent-drowning` was `true` in every phase.
 
 Setup:
 
@@ -223,38 +252,48 @@ For each scenario and number of silverfish there were three phases:
 
 In every phase the silverfish from the previous phase were removed and new ones were summoned at random positions on the floor. After 70 seconds the tick time was read with Paper's `/mspt` command (average over the last 10 seconds). The number of silverfish alive was checked at the end of each phase, and none had died in any phase.
 
-Results, in milliseconds per tick. A tick can take up to 50 ms before the TPS drops below 20. The percentages compare each column with AI on.
+The whole benchmark was run twice, in opposite order:
 
-Land (without silverfish the server used 1.0 ms per tick):
+- Pass 1 (version 1.0.0): land before water, fewer silverfish before more, and in each group AI on first, then AI off, then no collisions.
+- Pass 2 (version 1.0.1): water before land, more silverfish before fewer, and in each group no collisions first, then AI off, then AI on.
+
+The reason for pass 2 is that the Java virtual machine gets faster as it warms up, so a fixed order could favour whatever runs later. In pass 1 the phases with the plugin always ran after the one without it. In pass 2 it was the other way round. The changes in 1.0.1 don't affect freshly spawned silverfish, which is all the benchmark uses.
+
+Results, in milliseconds per tick. A tick can take up to 50 ms before the TPS drops below 20. Each cell shows pass 1 / pass 2. The percentages compare each column with AI on in the same pass.
+
+Land (without silverfish the server used 1.0 / 0.7 ms per tick):
 
 | Silverfish | AI on | AI off | AI off, no collisions |
 |---|---|---|---|
-| 500 | 5.1 ms | 3.8 ms (25% less) | 3.2 ms (37% less) |
-| 1000 | 9.8 ms | 6.7 ms (32% less) | 5.7 ms (42% less) |
-| 2000 | 22.1 ms | 15.4 ms (30% less) | 9.6 ms (57% less) |
+| 500 | 5.1 / 4.8 ms | 3.8 / 3.8 ms (25% / 21% less) | 3.2 / 3.1 ms (37% / 35% less) |
+| 1000 | 9.8 / 9.6 ms | 6.7 / 6.2 ms (32% / 35% less) | 5.7 / 5.0 ms (42% / 48% less) |
+| 2000 | 22.1 / 22.0 ms | 15.4 / 15.9 ms (30% / 28% less) | 9.6 / 10.5 ms (57% / 52% less) |
 
-Water (without silverfish the server used 0.8 ms per tick):
+Water (without silverfish the server used 0.8 / 0.9 ms per tick):
 
 | Silverfish | AI on | AI off | AI off, no collisions |
 |---|---|---|---|
-| 1000 | 12.2 ms | 9.9 ms (19% less) | 7.1 ms (42% less) |
-| 2000 | 28.1 ms | 20.9 ms (26% less) | 14.2 ms (49% less) |
+| 1000 | 12.2 / 12.2 ms | 9.9 / 8.3 ms (19% / 32% less) | 7.1 / 7.0 ms (42% / 43% less) |
+| 2000 | 28.1 / 27.3 ms | 20.9 / 20.4 ms (26% / 25% less) | 14.2 / 14.3 ms (49% / 48% less) |
 
-Two earlier runs, on land and with an earlier version of the plugin, gave similar numbers: 23% to 33% less with AI off and 34% to 49% less with collisions off too. The differences between runs are normal measuring noise of a few points.
+The two passes agree within a few points, so the order of the phases didn't change the result. Two earlier runs on land, during development, gave similar numbers too (23% to 33% less with AI off, 34% to 49% less with collisions off too).
 
 What this means:
 
-- With the default config (AI off), silverfish cost about 20% to 30% less than normal ones.
-- With all options on (AI off and no collisions), they cost about 40% to 57% less. With many silverfish close together, that is about half.
+- With the default config (AI off), silverfish cost about 20% to 35% less than normal ones.
+- With all options on (AI off and no collisions), they cost about 35% to 57% less. With many silverfish close together, that is about half.
 - Silverfish still run their physics, and collisions between them get more expensive the more they are packed together. That is why turning off collisions matters more at 2000 silverfish than at 500.
-- Silverfish in water cost more than on land in every phase. The saving from AI off is a bit smaller in water, but collisions off still cuts the cost roughly in half at 2000.
+- Silverfish in water cost more than on land in every phase, but the saving is about the same.
 - In the water scenario every frozen silverfish was out of air, so drowning prevention was working for all of them at the same time. Its cost is already included in the water numbers.
-- The plugin doesn't make an unlimited number of silverfish free. If a farm produces them faster than they are killed, the lag will come back.
+- The plugin doesn't make an unlimited number of silverfish free. If a farm produces them faster than they are killed, the lag will come back. See [Other things that can help](#other-things-that-can-help).
+
+These are ranges from two passes, not exact figures. Don't read them as "the plugin saves exactly 57%".
 
 Limits of this test:
 
 - It is a synthetic test in a box, not a real farm. Silverfish in a farm move through water streams and gather in the killing chamber, so the numbers on a real server will be different.
 - The absolute numbers depend on the hardware. A slower server will show higher values, but the differences between the columns should be similar.
+- Each number is a single 10 second average, and there are only two passes. That's enough to see the size of the saving, not to give precise statistics. A spark profile of your own server with the farm running is the best check, see below.
 
 ## Checking the result on your own server
 
@@ -266,14 +305,22 @@ Measure the server while the farm is running, once with the plugin disabled and 
 
 Let it run for a few minutes with the farm active, then stop it with `/spark profiler stop` and compare the two reports. With the plugin enabled, the time spent on silverfish AI (pathfinding and goal selectors) should mostly disappear.
 
+## Other things that can help
+
+FrozenSilverfish makes each silverfish cheaper, but 2000 silverfish are still 2000 entities that the server ticks, moves and sends to players. If you need more, these Paper and Spigot settings are worth a look. They are not part of the plugin and they apply to all mobs, not only silverfish, so change them carefully and measure before and after.
+
+- `collisions.max-entity-collisions` in `config/paper-world-defaults.yml` (default 8). Limits how many other entities each entity collides with per tick. A lower value makes packed mobs cheaper, but changes how mobs push each other everywhere.
+- `entity-tracking-range.monsters` in `spigot.yml` (default 96). How far away players receive updates about monsters. A lower value means less network traffic for silverfish that players can't see anyway.
+- The farm itself: fewer silverfish alive at the same time is always cheaper, for example with a shorter water stream or a killing chamber that is always manned while the armadillos are being hit.
+
 ## Uninstalling
 
 The aware flag is saved with the entity, so if you just remove the plugin, the silverfish that were frozen stay frozen forever. Without the plugin they would also drown in water, because drowning prevention stops with it.
 
 To remove it cleanly:
 
-1. Set `enabled: false` in the config and run `/fsf reload`. This restores all loaded silverfish.
-2. Leave the plugin installed for a while, so that silverfish in chunks that load later are restored too. If all your silverfish are in areas that are usually loaded, this step is quick. `/fsf status` shows how many loaded silverfish still have no AI.
+1. Set `enabled: false` in the config and run `/fsf reload`. This undoes the plugin's changes on all loaded silverfish.
+2. Leave the plugin installed for a while, so that silverfish in chunks that load later are restored too. If all your silverfish are in areas that are usually loaded, this step is quick. `/fsf status` shows how many loaded silverfish are still frozen by this plugin.
 3. Stop the server and remove the jar and the `plugins/FrozenSilverfish` folder.
 
 ## Building from source
