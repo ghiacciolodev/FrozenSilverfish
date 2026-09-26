@@ -4,6 +4,7 @@ import com.destroystokyo.paper.event.entity.EntityAddToWorldEvent;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.bukkit.NamespacedKey;
 import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -13,11 +14,16 @@ import org.bukkit.entity.Silverfish;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.persistence.PersistentDataContainer;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class FrozenSilverfish extends JavaPlugin implements Listener, TabExecutor {
 
     private static final String TAG = "frozen_silverfish";
+
+    // Marks silverfish whose collisions we turned off, so we only restore those.
+    private final NamespacedKey collisionsKey = new NamespacedKey(this, "collisions_off");
 
     private boolean enabled;
     private boolean disableCollisions;
@@ -89,35 +95,60 @@ public final class FrozenSilverfish extends JavaPlugin implements Listener, TabE
 
     /** Freezes or restores a silverfish. Returns true if anything changed. */
     private boolean apply(Silverfish silverfish) {
-        if (isActiveIn(silverfish.getWorld())) {
-            boolean changed = false;
+        boolean active = isActiveIn(silverfish.getWorld());
+        boolean aiChanged = updateAi(silverfish, active);
+        boolean frozenByUs = silverfish.getScoreboardTags().contains(TAG);
+        boolean collisionsChanged = updateCollisions(silverfish, frozenByUs && disableCollisions);
+        return aiChanged || collisionsChanged;
+    }
+
+    private boolean updateAi(Silverfish silverfish, boolean freeze) {
+        if (freeze) {
+            // Already unaware means it's either frozen by us already, or another
+            // plugin turned its AI off. In that case we don't tag it, so we never
+            // turn its AI back on later.
+            if (!silverfish.isAware()) {
+                return false;
+            }
             // setAware(false) only stops the AI goals. setAI(false) would also stop
             // gravity and movement, leaving the mob floating and breaking the water
             // transport. With setAware the mob still falls, gets pushed by water
             // and takes knockback.
-            if (silverfish.isAware()) {
-                silverfish.setAware(false);
-                changed = true;
-            }
+            silverfish.setAware(false);
             silverfish.addScoreboardTag(TAG);
-            // Collidable is not saved with the entity, so it is set on every load.
-            boolean collidable = !disableCollisions;
-            if (silverfish.isCollidable() != collidable) {
-                silverfish.setCollidable(collidable);
-                changed = true;
-            }
-            return changed;
+            return true;
         }
 
         // Aware is saved with the entity, so silverfish we froze earlier stay
         // frozen until we restore them here.
-        if (silverfish.getScoreboardTags().contains(TAG)) {
-            silverfish.setAware(true);
-            silverfish.setCollidable(true);
-            silverfish.removeScoreboardTag(TAG);
+        if (!silverfish.getScoreboardTags().contains(TAG)) {
+            return false;
+        }
+        silverfish.setAware(true);
+        silverfish.removeScoreboardTag(TAG);
+        return true;
+    }
+
+    private boolean updateCollisions(Silverfish silverfish, boolean disable) {
+        PersistentDataContainer data = silverfish.getPersistentDataContainer();
+        if (disable) {
+            // Collidable is not saved with the entity, so after a chunk load it is
+            // back to true and has to be set again. If it's already false and not
+            // marked, another plugin did it and we leave it alone.
+            if (!silverfish.isCollidable()) {
+                return false;
+            }
+            silverfish.setCollidable(false);
+            data.set(collisionsKey, PersistentDataType.BOOLEAN, true);
             return true;
         }
-        return false;
+
+        if (!data.has(collisionsKey)) {
+            return false;
+        }
+        silverfish.setCollidable(true);
+        data.remove(collisionsKey);
+        return true;
     }
 
     @Override
@@ -136,17 +167,22 @@ public final class FrozenSilverfish extends JavaPlugin implements Listener, TabE
             case "status" -> {
                 int loaded = 0;
                 int unaware = 0;
+                int frozen = 0;
                 for (World world : getServer().getWorlds()) {
                     for (Silverfish silverfish : world.getEntitiesByClass(Silverfish.class)) {
                         loaded++;
                         if (!silverfish.isAware()) {
                             unaware++;
                         }
+                        if (silverfish.getScoreboardTags().contains(TAG)) {
+                            frozen++;
+                        }
                     }
                 }
                 sender.sendMessage("FrozenSilverfish is " + (enabled ? "enabled" : "disabled")
                         + (worlds.isEmpty() ? " in all worlds." : " in: " + String.join(", ", worlds) + "."));
-                sender.sendMessage("Loaded silverfish: " + loaded + ", without AI: " + unaware + ".");
+                sender.sendMessage("Loaded silverfish: " + loaded + ", without AI: " + unaware
+                        + ", frozen by this plugin: " + frozen + ".");
                 sender.sendMessage("Collisions disabled: " + (disableCollisions ? "yes" : "no") + ".");
                 sender.sendMessage("Drowning prevented: " + (preventDrowning ? "yes" : "no") + ".");
             }
