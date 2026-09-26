@@ -1,0 +1,15 @@
+# Remove the AI from silverfish. Set to false and run /fsf reload to restore
+# every silverfish this plugin has frozen.
+enabled: true
+
+# Turn off entity collisions for frozen silverfish. Keep this false unless you
+# know you need it: without collisions silverfish are not pushed by other mobs
+# and are not killed by entity cramming, so they can pile up without limit.
+disable-collisions: false
+
+# Frozen silverfish can't swim up, so they sink and drown after about 15
+# seconds in water. Keep this true if they travel through water streams.
+prevent-drowning: true
+
+# Worlds where the plugin is active. An empty list means all worlds.
+worlds: []
