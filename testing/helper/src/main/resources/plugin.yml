@@ -1,0 +1,12 @@
+name: FsfTest
+version: '1'
+main: fsftest.FsfTest
+api-version: '26.2'
+description: Test helper for FrozenSilverfish. Only for test servers.
+commands:
+  fsftest:
+    usage: /<command> <query|aware true/false|collide true/false> <tag>
+    permission: fsftest.use
+permissions:
+  fsftest.use:
+    default: op
