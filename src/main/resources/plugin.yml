@@ -4,6 +4,7 @@ main: dev.ghiacciolo.frozensilverfish.FrozenSilverfish
 api-version: '26.2'
 description: Removes the AI from silverfish while keeping their physics.
 author: ghiacciolodev
+website: https://github.com/ghiacciolodev/FrozenSilverfish
 
 commands:
   frozensilverfish:

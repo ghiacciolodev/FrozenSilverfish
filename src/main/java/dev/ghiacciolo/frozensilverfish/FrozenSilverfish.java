@@ -1,8 +1,10 @@
 package dev.ghiacciolo.frozensilverfish;
 
 import com.destroystokyo.paper.event.entity.EntityAddToWorldEvent;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
@@ -33,7 +35,10 @@ public final class FrozenSilverfish extends JavaPlugin implements Listener, TabE
     @Override
     public void onEnable() {
         saveDefaultConfig();
-        loadSettings();
+        for (String warning : loadSettings()) {
+            getLogger().warning(warning);
+        }
+        getLogger().info(describeSettings());
 
         getServer().getPluginManager().registerEvents(this, this);
         PluginCommand command = getCommand("frozensilverfish");
@@ -48,12 +53,33 @@ public final class FrozenSilverfish extends JavaPlugin implements Listener, TabE
         }
     }
 
-    private void loadSettings() {
+    /** Loads the config and returns warnings about it, if any. */
+    private List<String> loadSettings() {
         reloadConfig();
         enabled = getConfig().getBoolean("enabled", true);
         disableCollisions = getConfig().getBoolean("disable-collisions", true);
         preventDrowning = getConfig().getBoolean("prevent-drowning", true);
         worlds = new HashSet<>(getConfig().getStringList("worlds"));
+
+        // A typo here makes the plugin inactive everywhere without any error,
+        // so point it out. Only a warning, because the world may load later.
+        List<String> warnings = new ArrayList<>();
+        for (String name : worlds) {
+            if (getServer().getWorld(name) == null) {
+                warnings.add("World '" + name + "' in the worlds list is not loaded. "
+                        + "Check the name, it is case sensitive.");
+            }
+        }
+        return warnings;
+    }
+
+    private String describeSettings() {
+        if (!enabled) {
+            return "Disabled in the config.";
+        }
+        return "Active in " + (worlds.isEmpty() ? "all worlds" : String.join(", ", worlds))
+                + ", collisions disabled: " + (disableCollisions ? "yes" : "no")
+                + ", drowning prevented: " + (preventDrowning ? "yes" : "no") + ".";
     }
 
     // Fires for new spawns and for entities loaded from chunks.
@@ -158,33 +184,40 @@ public final class FrozenSilverfish extends JavaPlugin implements Listener, TabE
             return true;
         }
 
-        switch (args[0].toLowerCase()) {
+        switch (args[0].toLowerCase(Locale.ROOT)) {
             case "reload" -> {
-                loadSettings();
+                List<String> warnings = loadSettings();
                 int updated = applyToLoaded();
                 sender.sendMessage("FrozenSilverfish reloaded. Updated " + updated + " silverfish.");
+                sender.sendMessage(describeSettings());
+                for (String warning : warnings) {
+                    sender.sendMessage("Warning: " + warning);
+                }
             }
             case "status" -> {
                 int loaded = 0;
-                int unaware = 0;
                 int frozen = 0;
+                int collisionsOff = 0;
+                int unawareNotOurs = 0;
                 for (World world : getServer().getWorlds()) {
                     for (Silverfish silverfish : world.getEntitiesByClass(Silverfish.class)) {
                         loaded++;
-                        if (!silverfish.isAware()) {
-                            unaware++;
-                        }
-                        if (silverfish.getScoreboardTags().contains(TAG)) {
+                        boolean ours = silverfish.getScoreboardTags().contains(TAG);
+                        if (ours) {
                             frozen++;
+                        } else if (!silverfish.isAware()) {
+                            unawareNotOurs++;
+                        }
+                        if (silverfish.getPersistentDataContainer().has(collisionsKey)) {
+                            collisionsOff++;
                         }
                     }
                 }
-                sender.sendMessage("FrozenSilverfish is " + (enabled ? "enabled" : "disabled")
-                        + (worlds.isEmpty() ? " in all worlds." : " in: " + String.join(", ", worlds) + "."));
-                sender.sendMessage("Loaded silverfish: " + loaded + ", without AI: " + unaware
-                        + ", frozen by this plugin: " + frozen + ".");
-                sender.sendMessage("Collisions disabled: " + (disableCollisions ? "yes" : "no") + ".");
-                sender.sendMessage("Drowning prevented: " + (preventDrowning ? "yes" : "no") + ".");
+                sender.sendMessage("FrozenSilverfish " + getPluginMeta().getVersion() + ": " + describeSettings());
+                sender.sendMessage("Loaded silverfish: " + loaded + ", frozen by this plugin: " + frozen
+                        + ", collisions turned off by this plugin: " + collisionsOff + ".");
+                // Silverfish another plugin turned off: useful to spot overlaps.
+                sender.sendMessage("Without AI but not frozen by this plugin: " + unawareNotOurs + ".");
             }
             default -> sender.sendMessage("Usage: /" + label + " <reload|status>");
         }
@@ -195,7 +228,7 @@ public final class FrozenSilverfish extends JavaPlugin implements Listener, TabE
     public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 1) {
             return List.of("reload", "status").stream()
-                    .filter(option -> option.startsWith(args[0].toLowerCase()))
+                    .filter(option -> option.startsWith(args[0].toLowerCase(Locale.ROOT)))
                     .toList();
         }
         return List.of();

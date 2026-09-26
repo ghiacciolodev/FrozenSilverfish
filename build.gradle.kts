@@ -3,15 +3,18 @@ plugins {
 }
 
 group = "dev.ghiacciolo"
-version = "1.0.1"
+version = "1.0.2"
 
 repositories {
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
 }
 
+// Pinned to the build the plugin was tested with, so builds are reproducible.
+val paperApiVersion = "26.2.build.129-stable"
+
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:26.2.build.+")
+    compileOnly("io.papermc.paper:paper-api:$paperApiVersion")
 }
 
 java {
