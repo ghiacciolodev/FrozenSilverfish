@@ -158,6 +158,8 @@ The worlds where the plugin is active, by name, for example `[world, world_nethe
 
 Keep in mind that the plugin freezes every silverfish in an active world, not only the ones from farms. Silverfish from strongholds, infested blocks in the mountains or spawners will also be harmless there. If that matters for your server and the farm is in a separate world, list only that world.
 
+World names are case sensitive. If a name in the list doesn't match a loaded world, the plugin writes a warning in the console at startup and in the reply to `/fsf reload`. It's only a warning, because a world managed by another plugin may load later.
+
 ### Recommended configuration
 
 The recommended configuration is the default one. It is meant for a farm like ours, where silverfish travel through water and a player kills them as soon as they reach the killing chamber:
@@ -184,8 +186,10 @@ Set `worlds` if you want silverfish outside your farm world to keep their AI, as
 
 All commands need the `frozensilverfish.admin` permission, which ops have by default. `/fsf` is a short alias for `/frozensilverfish`.
 
-- `/fsf reload` reloads the config, applies it to all loaded silverfish and tells you how many were updated. Silverfish that were already in the right state are not counted.
-- `/fsf status` shows whether the plugin is enabled and in which worlds, how many silverfish are loaded, how many of them have no AI, how many of those were frozen by this plugin, and whether collisions are disabled and drowning is prevented. "Without AI" can be higher than "frozen by this plugin" if another plugin turned off the AI of some silverfish.
+- `/fsf reload` reloads the config, applies it to all loaded silverfish and tells you how many were updated. Silverfish that were already in the right state are not counted. It also shows the settings now in use and any warning about the `worlds` list.
+- `/fsf status` shows the plugin version, whether it is enabled and in which worlds, whether collisions are disabled and drowning is prevented, how many silverfish are loaded, how many were frozen by this plugin and how many had their collisions turned off by it. It also shows how many silverfish have their AI off without being frozen by this plugin. If that number isn't 0, another plugin is turning off the AI of silverfish too.
+
+The settings in use are also written to the console when the server starts.
 
 ## Test results
 
@@ -193,9 +197,11 @@ All tests were run on a local test server: Paper 26.2 build 129, Java 25.0.4, Wi
 
 ### Functional tests
 
-These tests were run on version 1.0.1 with a script that sends commands to the server through RCON and checks the result. Commands can't show whether an entity is collidable or has had its AI turned off by the API, so for these checks a small helper plugin was loaded on the test server only. It reads those values and can also act as "another plugin" that turns off the AI or the collisions of a silverfish. The helper is not part of this project.
+These tests were run on version 1.0.2 with a script that sends commands to the server through RCON and checks the result. Commands can't show whether an entity is collidable or has had its AI turned off by the API, so for these checks a small helper plugin was loaded on the test server only. It reads those values and can also act as "another plugin" that turns off the AI or the collisions of a silverfish.
 
-All 28 checks passed, with no errors or warnings in the console.
+The scripts and the helper are in the [testing](testing) folder, with instructions to run them on your own test server.
+
+All 30 checks passed, with no errors from the plugin in the console.
 
 | What was tested | How | Result |
 |---|---|---|
@@ -215,6 +221,8 @@ All 28 checks passed, with no errors or warnings in the console.
 | Collisions turned off by another plugin, option on | The helper turns off collisions, then `disable-collisions: true` | No marker is added |
 | Same, option off again | `disable-collisions: false` | Collisions stay off |
 | Status | Compare `/fsf status` with counts from `/execute if entity` | Loaded and frozen counts match |
+| Status, other plugin | `/fsf status` with the silverfish made unaware by the helper still loaded | It is counted as "without AI but not frozen by this plugin" |
+| Unknown world | `worlds: [wrold]` and `/fsf reload` | The reply warns that `wrold` is not loaded. The same warning appears in the console at startup |
 | World filter | `worlds: [world_nether]` | Silverfish in the overworld are restored |
 | World filter back | `worlds: []` | Frozen again, collisions off again |
 | Chunk unload | Freeze a silverfish in a far chunk with collisions off, unload the chunk | The silverfish is no longer loaded |
@@ -323,6 +331,8 @@ To remove it cleanly:
 2. Leave the plugin installed for a while, so that silverfish in chunks that load later are restored too. If all your silverfish are in areas that are usually loaded, this step is quick. `/fsf status` shows how many loaded silverfish are still frozen by this plugin.
 3. Stop the server and remove the jar and the `plugins/FrozenSilverfish` folder.
 
+Unloading or reloading the plugin while the server is running (with `/reload` or a plugin manager) is not supported. Frozen silverfish stay frozen, and until the plugin is loaded again they are not protected from drowning. Restart the server instead.
+
 ## Building from source
 
 You need Java 25. If it isn't installed, Gradle downloads it automatically the first time.
@@ -332,6 +342,10 @@ You need Java 25. If it isn't installed, Gradle downloads it automatically the f
 ```
 
 On Windows use `gradlew.bat build`. The jar ends up in `build/libs`.
+
+Every push to the repository is also built by GitHub Actions, see [.github/workflows/build.yml](.github/workflows/build.yml). The jar of each build can be downloaded from the Actions tab.
+
+The Paper API version is pinned in `build.gradle.kts` to the build the plugin was tested with (`26.2.build.129-stable`). Change it on purpose after testing with a newer build.
 
 ## License
 
