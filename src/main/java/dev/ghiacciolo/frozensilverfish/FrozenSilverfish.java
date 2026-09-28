@@ -6,12 +6,17 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
+import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
+import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.command.TabExecutor;
+import org.bukkit.damage.DamageType;
 import org.bukkit.entity.Silverfish;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -19,10 +24,13 @@ import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.util.Vector;
 
 public final class FrozenSilverfish extends JavaPlugin implements Listener, TabExecutor {
 
     private static final String TAG = "frozen_silverfish";
+
+    private static final BlockFace[] SIDES = {BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST};
 
     // Marks silverfish whose collisions we turned off, so we only restore those.
     private final NamespacedKey collisionsKey = new NamespacedKey(this, "collisions_off");
@@ -30,6 +38,7 @@ public final class FrozenSilverfish extends JavaPlugin implements Listener, TabE
     private boolean enabled;
     private boolean disableCollisions;
     private boolean preventDrowning;
+    private boolean pushOffCampfires;
     private Set<String> worlds = Set.of();
 
     @Override
@@ -59,6 +68,7 @@ public final class FrozenSilverfish extends JavaPlugin implements Listener, TabE
         enabled = getConfig().getBoolean("enabled", true);
         disableCollisions = getConfig().getBoolean("disable-collisions", true);
         preventDrowning = getConfig().getBoolean("prevent-drowning", true);
+        pushOffCampfires = getConfig().getBoolean("push-off-campfires", true);
         worlds = new HashSet<>(getConfig().getStringList("worlds"));
 
         // A typo here makes the plugin inactive everywhere without any error,
@@ -79,7 +89,8 @@ public final class FrozenSilverfish extends JavaPlugin implements Listener, TabE
         }
         return "Active in " + (worlds.isEmpty() ? "all worlds" : String.join(", ", worlds))
                 + ", collisions disabled: " + (disableCollisions ? "yes" : "no")
-                + ", drowning prevented: " + (preventDrowning ? "yes" : "no") + ".";
+                + ", drowning prevented: " + (preventDrowning ? "yes" : "no")
+                + ", campfire push: " + (pushOffCampfires ? "yes" : "no") + ".";
     }
 
     // Fires for new spawns and for entities loaded from chunks.
@@ -90,17 +101,62 @@ public final class FrozenSilverfish extends JavaPlugin implements Listener, TabE
         }
     }
 
-    // Swimming up is an AI goal, so frozen silverfish sink and would drown in
-    // the water streams before reaching the killing chamber.
     @EventHandler(ignoreCancelled = true)
-    public void onDrown(EntityDamageEvent event) {
-        if (preventDrowning
-                && event.getCause() == EntityDamageEvent.DamageCause.DROWNING
-                && event.getEntity() instanceof Silverfish silverfish
-                && !silverfish.isAware()
-                && silverfish.getScoreboardTags().contains(TAG)) {
-            event.setCancelled(true);
+    public void onDamage(EntityDamageEvent event) {
+        DamageType type = event.getDamageSource().getDamageType();
+        if (type != DamageType.DROWN && type != DamageType.CAMPFIRE) {
+            return;
         }
+        if (!(event.getEntity() instanceof Silverfish silverfish)
+                || silverfish.isAware()
+                || !silverfish.getScoreboardTags().contains(TAG)) {
+            return;
+        }
+
+        if (type == DamageType.DROWN) {
+            // Swimming up is an AI goal, so frozen silverfish sink and would drown
+            // in the water streams before reaching the killing chamber.
+            if (preventDrowning) {
+                event.setCancelled(true);
+            }
+        } else if (pushOffCampfires) {
+            pushOffCampfire(silverfish);
+        }
+    }
+
+    /**
+     * Without AI a silverfish that lands on a campfire never walks off and burns
+     * there. The campfire hurts it about twice a second, and every hit pushes it
+     * towards a random open side until it falls off. This only runs for
+     * silverfish that are actually burning, so it costs nothing for the others.
+     */
+    private void pushOffCampfire(Silverfish silverfish) {
+        Block block = silverfish.getLocation().getBlock();
+        ThreadLocalRandom random = ThreadLocalRandom.current();
+
+        // Pick a random side that isn't a wall. Other campfires count as open,
+        // since they are low and the silverfish slides over them.
+        BlockFace side = null;
+        int open = 0;
+        for (BlockFace face : SIDES) {
+            Block next = block.getRelative(face);
+            if ((next.isPassable() || isCampfire(next.getType())) && random.nextInt(++open) == 0) {
+                side = face;
+            }
+        }
+
+        Vector push;
+        if (side != null) {
+            push = side.getDirection();
+        } else {
+            double angle = random.nextDouble(Math.PI * 2);
+            push = new Vector(Math.cos(angle), 0, Math.sin(angle));
+        }
+        silverfish.setVelocity(push.multiply(0.3).setY(0.2));
+    }
+
+    private static boolean isCampfire(Material type) {
+        return type == Material.CAMPFIRE || type == Material.SOUL_CAMPFIRE;
     }
 
     private int applyToLoaded() {

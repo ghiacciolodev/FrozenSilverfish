@@ -11,5 +11,9 @@ disable-collisions: true
 # seconds in water. Keep this true if they travel through water streams.
 prevent-drowning: true
 
+# Frozen silverfish can't walk off a campfire and burn on it. When a campfire
+# hurts one, push it in a random direction until it falls off.
+push-off-campfires: true
+
 # Worlds where the plugin is active. An empty list means all worlds.
 worlds: []
