@@ -19,6 +19,7 @@ Every silverfish that enters a world gets its AI turned off. A frozen silverfish
 - hides inside blocks
 - wakes up other silverfish
 - swims up to the surface of water
+- walks off a campfire it landed on
 
 These things keep working as before:
 
@@ -29,6 +30,8 @@ These things keep working as before:
 - XP when a player kills it
 
 So the farm works the same way: the silverfish still fall, still travel along the water streams and still die to the sword. They just stop thinking.
+
+The two things they can't do anymore, swimming up and walking off campfires, are handled by the plugin, see [Drowning](#drowning) and [Campfires](#campfires).
 
 The plugin only changes silverfish. Armadillos and every other mob are left alone.
 
@@ -77,6 +80,18 @@ Swimming up to the surface is also part of the AI. A frozen silverfish sinks in 
 
 With `prevent-drowning: true` (the default) the plugin cancels drowning damage for frozen silverfish. They still run out of air, they just don't take damage from it. This costs almost nothing: the damage event only fires about once per second for a silverfish that is actually drowning. Silverfish with their AI on are not affected, because they swim up by themselves.
 
+### Campfires
+
+Many armadillo farms keep the armadillos on campfires, so that they get hurt all the time and Infested keeps spawning silverfish. Infested throws each new silverfish in a random direction, and most of them fall off the campfire. The ones that land on top of it used to walk off by themselves, following the nearest player. Frozen silverfish don't, so they stay on the campfire and burn to death before reaching the killing chamber, without giving any XP.
+
+In a test with 12 stations of 20 armadillos on campfires, this is what happened to 85% of the silverfish.
+
+With `push-off-campfires: true` (the default), every time a campfire hurts a frozen silverfish, the plugin gives it a small push towards one of the four sides, chosen at random among the ones that aren't a wall. Other campfires count as open, because they are low and a silverfish slides over them. If all four sides look closed, the push goes in a completely random direction. A campfire hurts a silverfish about twice a second, so if one push isn't enough, the next one comes half a second later, until the silverfish falls off.
+
+This doesn't cost anything for silverfish that aren't on a campfire. There is no task and no scan of the entities: the plugin only reacts to the campfire damage, looks at 4 blocks and sets the velocity. The damage itself is not cancelled, so a silverfish that somehow can't get off still dies like before and doesn't pile up.
+
+One limit: the plugin decides what is a wall by looking at the block type. A block like a slab or a trapdoor that leaves a gap a silverfish could pass under counts as a wall. If a station has such blocks on all four sides, the push just goes in a random direction and still works. It would only go wrong if a station had one open side leading nowhere and the real exits were all slabs or trapdoors.
+
 ### Collisions
 
 With `disable-collisions: true` the plugin also calls `setCollidable(false)` on the silverfish it froze. They stop pushing each other and other mobs, and they are no longer affected by entity cramming. In the benchmark below this saved a lot of time when many silverfish were packed together.
@@ -111,6 +126,7 @@ This is the default config. It is also the recommended one, see [Recommended con
 enabled: true
 disable-collisions: true
 prevent-drowning: true
+push-off-campfires: true
 worlds: []
 ```
 
@@ -147,6 +163,17 @@ Frozen silverfish can't swim up, so they sink and drown after about 15 to 20 sec
 
 Silverfish with their AI on are not affected by this option, because they swim up by themselves.
 
+### push-off-campfires
+
+Default: `true`
+
+Frozen silverfish can't walk off a campfire and burn on it. See [Campfires](#campfires).
+
+- `true`: when a campfire hurts a frozen silverfish, the plugin pushes it towards an open side until it falls off. In a test with 12 stations of 20 armadillos on campfires, 1.2% of the silverfish died on a campfire, compared to 85% without the push.
+- `false`: frozen silverfish that land on a campfire stay there and burn.
+
+It only matters for farms with campfires. In other farms it never runs.
+
 ### worlds
 
 Default: `[]`
@@ -168,6 +195,7 @@ The recommended configuration is the default one. It is meant for a farm like ou
 enabled: true
 disable-collisions: true
 prevent-drowning: true
+push-off-campfires: true
 worlds: []
 ```
 
@@ -176,6 +204,7 @@ This is what the tests support:
 - It gave the biggest saving in the benchmark: 35% to 57% less time spent on silverfish on land and 42% to 49% in water, depending on how many there were.
 - In a test farm with 4 stations of armadillos, silverfish still travelled along the water streams to the killing chamber and died to a Sweeping Edge hit on the armor stand with these settings.
 - With `prevent-drowning: true` no frozen silverfish drowned, in the farm or in the benchmark.
+- With `push-off-campfires: true`, in a test farm with 12 stations of 20 armadillos on campfires, 98.8% of the silverfish got off the campfires alive, compared to 15% without it.
 - With `disable-collisions: true`, 40 silverfish in the same block all survived. This is the part to watch: if nobody kills them, they won't be limited by cramming.
 
 If you can't be sure that silverfish are always killed soon after they arrive, or if your farm relies on mobs pushing each other, set `disable-collisions: false`. With only the AI off it still saves about 20% to 35%, with no change in how silverfish interact with other mobs.
@@ -197,11 +226,11 @@ All tests were run on a local test server: Paper 26.2 build 129, Java 25.0.4, Wi
 
 ### Functional tests
 
-These tests were run on version 1.0.2 with a script that sends commands to the server through RCON and checks the result. Commands can't show whether an entity is collidable or has had its AI turned off by the API, so for these checks a small helper plugin was loaded on the test server only. It reads those values and can also act as "another plugin" that turns off the AI or the collisions of a silverfish.
+These tests were run on version 1.1.0 with a script that sends commands to the server through RCON and checks the result. Commands can't show whether an entity is collidable or has had its AI turned off by the API, so for these checks a small helper plugin was loaded on the test server only. It reads those values and can also act as "another plugin" that turns off the AI or the collisions of a silverfish.
 
 The scripts and the helper are in the [testing](testing) folder, with instructions to run them on your own test server.
 
-All 30 checks passed, with no errors from the plugin in the console.
+All 32 checks passed, with no errors from the plugin in the console.
 
 | What was tested | How | Result |
 |---|---|---|
@@ -230,12 +259,41 @@ All 30 checks passed, with no errors from the plugin in the console.
 | Disabled while unloaded | Unload the chunk, `enabled: false`, load the chunk | AI back on, collisions back on, tag and marker removed |
 | Drowning, option off | Frozen silverfish in water 2 blocks deep, `prevent-drowning: false` | It drowns within 25 seconds |
 | Drowning, option on | Same with `prevent-drowning: true` | After 30 seconds it is out of air but at full health |
+| Campfire push on | Frozen silverfish on a lit campfire in a glass cell open on one side, `push-off-campfires: true` | Within 6 seconds it is off the campfire and alive |
+| Campfire push off | Same with `push-off-campfires: false` | It stays on the campfire and burns within 8 seconds |
 | Drowning, AI on | Plugin disabled, same water | The silverfish swims and is at full health after 25 seconds |
 | Before restart | Freeze a silverfish with collisions off | AI off, collisions off, marker |
 | After restart | Stop and start the server | Still frozen, collisions off again |
 | Startup | Start the server | No errors or warnings from the plugin |
 
 Tested by hand on version 1.0.0, in a test farm with 4 stations of armadillos with Infested, water streams and a killing chamber: silverfish reach the killing chamber and die to a Sweeping Edge sword hit on the armor stand, with both `disable-collisions: false` and `true`. The changes in 1.0.1 only affect silverfish whose AI or collisions were changed by another plugin, so they don't change this.
+
+### Campfire tests
+
+These tests used real armadillos with Infested standing on lit campfires, with Regeneration so they didn't die. The campfire hurts them all the time, so Infested keeps spawning silverfish, like in a farm. A helper plugin counted the silverfish spawned by Infested and the ones that died on a campfire.
+
+**Where the silverfish land.** With campfires out in the open, none of 93 silverfish stayed on a campfire: Infested throws them far enough. With each campfire in a glass cell open on one side, 21 of 81 (26%) stayed on top. So the problem depends on the shape of the station.
+
+**One side open.** 5 cells like that. Each row is a separate run of 60 to 90 seconds, so the numbers of spawns are different:
+
+| | Spawned | Died on a campfire |
+|---|---|---|
+| No push | 160 | 33 (21%) |
+| Push in a fully random direction | 119 | 14 (12%) |
+| Push towards an open side (the version in 1.1.0) | 139 | 0 |
+
+**Like a real farm.** 12 stations, each one campfire with 20 armadillos on it (240 armadillos in total), a glass ring one block above the campfire that armadillos can't pass under but silverfish can, and a glass block on top. 45 seconds each, nobody killing the silverfish:
+
+| | Spawned | Died on a campfire | Alive at the end |
+|---|---|---|---|
+| No push | 3224 | 2736 (85%) | 488 |
+| Push | 3235 | 39 (1.2%) | 3196 |
+
+At the end of the push phase 87 silverfish were still on a campfire, because the campfires were turned off while they were being pushed. With new spawns stopped and the campfires lit again for 10 seconds, none were left on a campfire: 82 got off and 5, already hurt, died.
+
+**About MSPT in this test.** The server used 7.1 ms per tick without the push and 25.7 ms with it. That is not the cost of the push. With the push 6.5 times more silverfish stayed alive, because nobody was killing them, and more living silverfish cost more. In a real farm they are killed in the killing chamber, so how much it costs depends on how many are alive at the same time. The push itself only runs for silverfish that are burning, about twice a second each, and reads at most 4 blocks.
+
+This also means that on a farm where most silverfish used to burn on the campfires, more of them now reach the killing chamber. The farm gives much more XP, and the server has somewhat more silverfish to handle at the same time. Each one still costs about half as much as a silverfish with its AI.
 
 ### Performance benchmark
 
@@ -302,6 +360,12 @@ Limits of this test:
 - It is a synthetic test in a box, not a real farm. Silverfish in a farm move through water streams and gather in the killing chamber, so the numbers on a real server will be different.
 - The absolute numbers depend on the hardware. A slower server will show higher values, but the differences between the columns should be similar.
 - Each number is a single 10 second average, and there are only two passes. That's enough to see the size of the saving, not to give precise statistics. A spark profile of your own server with the farm running is the best check, see below.
+
+### Result on a real server
+
+This is not from the test server above, but from the server the plugin was made for, whose hardware I don't know. The largest armadillo farm there used to bring the server down to about 14 TPS while running. With the plugin installed and the default config, the server stays at 20 TPS most of the time, and drops to about 19.4 at worst.
+
+This was measured with version 1.0.x, before the campfire push. If that farm keeps its armadillos on campfires, many silverfish were probably burning before reaching the killing chamber, so with 1.1.0 more of them survive and the server has more silverfish to handle at the same time. See [Campfire tests](#campfire-tests).
 
 ## Checking the result on your own server
 
