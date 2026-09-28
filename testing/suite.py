@@ -211,6 +211,26 @@ def run_main():
     check('AI on: silverfish swims and keeps its air', health('ai') == 8.0, str(health('ai')))
     rc('kill @e[tag=ai]')
 
+    # campfire in a cell open on one side (south)
+    rc('fill 424 -60 409 426 -57 409 glass')
+    rc('fill 424 -60 410 424 -57 410 glass')
+    rc('fill 426 -60 410 426 -57 410 glass')
+    rc('fill 424 -57 410 426 -57 411 glass')
+    rc('setblock 425 -60 410 campfire[lit=true]')
+    cfg(enabled=True)
+    summon('cf1', 425.5, -59.5, 410.5)
+    time.sleep(6)
+    p = pos('cf1')
+    check('push-off-campfires true: frozen silverfish is pushed off the campfire and survives',
+          p and health('cf1') is not None and not (425 <= p[0] < 426 and 410 <= p[2] < 411), f'{p} {health("cf1")}')
+    rc('kill @e[tag=cf1]')
+    write_config(args.config, campfire_push=False)
+    rc('fsf reload')
+    summon('cf2', 425.5, -59.5, 410.5)
+    time.sleep(8)
+    check('push-off-campfires false: frozen silverfish stays on the campfire and burns', 'none' in q('cf2'), q('cf2'))
+    rc('fill 424 -60 409 426 -57 411 air')
+
     # leave some silverfish for the restart test
     cfg(enabled=True, col=True)
     rc('kill @e[tag=fsft]')
@@ -223,7 +243,7 @@ def run_restart():
     check('after restart: still frozen, collisions off again', ok, out)
     rc('kill @e[tag=fsft]')
     rc('forceload remove all')
-    for x1, z1, x2, z2 in ((398, 398, 402, 402), (409, 404, 422, 406)):
+    for x1, z1, x2, z2 in ((398, 398, 402, 402), (409, 404, 422, 406), (424, 409, 426, 411)):
         rc(f'fill {x1} -62 {z1} {x2} -62 {z2} dirt')
         rc(f'fill {x1} -61 {z1} {x2} -61 {z2} grass_block')
         rc(f'fill {x1} -60 {z1} {x2} -60 {z2} air')

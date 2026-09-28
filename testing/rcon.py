@@ -44,9 +44,10 @@ def add_arguments(parser):
                         help='path to plugins/FrozenSilverfish/config.yml on the test server')
 
 
-def write_config(path, enabled=True, collisions_off=True, drowning=True, worlds='[]'):
+def write_config(path, enabled=True, collisions_off=True, drowning=True, worlds='[]', campfire_push=True):
     with open(path, 'w', encoding='utf-8') as f:
         f.write(f'enabled: {str(enabled).lower()}\n'
                 f'disable-collisions: {str(collisions_off).lower()}\n'
                 f'prevent-drowning: {str(drowning).lower()}\n'
+                f'push-off-campfires: {str(campfire_push).lower()}\n'
                 f'worlds: {worlds}\n')

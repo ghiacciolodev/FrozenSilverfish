@@ -5,7 +5,7 @@ api-version: '26.2'
 description: Test helper for FrozenSilverfish. Only for test servers.
 commands:
   fsftest:
-    usage: /<command> <query|aware true/false|collide true/false> <tag>
+    usage: /<command> <query|aware true/false|collide true/false> <tag> or <stats|resetstats>
     permission: fsftest.use
 permissions:
   fsftest.use:
