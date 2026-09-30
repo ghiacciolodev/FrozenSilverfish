@@ -120,7 +120,7 @@ On the first start the plugin creates `plugins/FrozenSilverfish/config.yml` and 
 
 The config file is `plugins/FrozenSilverfish/config.yml`. After changing it, run `/fsf reload`. You don't need to restart the server.
 
-This is the default config. It is also the recommended one, see [Recommended configuration](#recommended-configuration):
+This is the default config. For a server where other players build their own farms, we recommend changing `disable-collisions` to `false`, see [Recommended configuration](#recommended-configuration):
 
 ```yaml
 enabled: true
@@ -150,7 +150,7 @@ Also turns off collisions for frozen silverfish. See [Collisions](#collisions) f
 - `false`: the plugin doesn't touch collisions. Frozen silverfish push each other and other mobs like normal, and entity cramming still kills them when more than 24 are in the same spot. If you switch from `true` to `false`, the collisions the plugin turned off are turned back on.
 - `true`: frozen silverfish don't push each other or other mobs, and entity cramming doesn't affect them. Together with the AI off this saved about 35% to 57% on land and 42% to 49% in water, compared with about 20% to 35% with the AI off alone. The difference grows with the number of silverfish that are close together.
 
-The risk is that nothing limits how many silverfish can pile up. It is on by default because it gave the biggest saving in the tests and farms like ours kill silverfish as soon as they arrive. Set it to `false` if silverfish in your farm can wait for a long time before being killed, or if your farm relies on mobs pushing each other.
+The risk is that nothing limits how many silverfish can pile up. It is on by default because it gave the biggest saving in the tests, where silverfish were killed as soon as they arrived. On a server with farms built by other players we recommend `false`, because that is not guaranteed. See [Recommended configuration](#recommended-configuration).
 
 ### prevent-drowning
 
@@ -189,25 +189,28 @@ World names are case sensitive. If a name in the list doesn't match a loaded wor
 
 ### Recommended configuration
 
-The recommended configuration is the default one. It is meant for a farm like ours, where silverfish travel through water and a player kills them as soon as they reach the killing chamber:
+For a server where players build their own farms, we recommend the default config with collisions left on:
 
 ```yaml
 enabled: true
-disable-collisions: true
+disable-collisions: false
 prevent-drowning: true
 push-off-campfires: true
 worlds: []
 ```
 
-This is what the tests support:
+**Why `disable-collisions: false`.** With collisions off, entity cramming no longer kills silverfish. If a farm keeps running while nobody kills the silverfish, for example because the player is away or AFK, they pile up without any limit, and a few thousand of them are enough to bring the TPS down a lot. With collisions on, cramming kills the silverfish above 24 in the same spot, which puts a hard limit on how many can accumulate.
 
-- It gave the biggest saving in the benchmark: 35% to 57% less time spent on silverfish on land and 42% to 49% in water, depending on how many there were.
-- In a test farm with 4 stations of armadillos, silverfish still travelled along the water streams to the killing chamber and died to a Sweeping Edge hit on the armor stand with these settings.
+The cost is that a farm left running without anyone killing silverfish loses the ones that die from cramming, and that the saving is a bit smaller: about 20% to 35% with only the AI off, compared with 35% to 57% with collisions off too. That is still a lot, and it can't take the server down.
+
+What the tests support:
+
+- In a test farm with 4 stations of armadillos, silverfish still travelled along the water streams to the killing chamber and died to a Sweeping Edge hit on the armor stand, with collisions both on and off.
 - With `prevent-drowning: true` no frozen silverfish drowned, in the farm or in the benchmark.
 - With `push-off-campfires: true`, in a test farm with 12 stations of 20 armadillos on campfires, 98.8% of the silverfish got off the campfires alive, compared to 15% without it.
-- With `disable-collisions: true`, 40 silverfish in the same block all survived. This is the part to watch: if nobody kills them, they won't be limited by cramming.
+- With `disable-collisions: false`, cramming brought 40 frozen silverfish in the same block down to 24 within 5 seconds, like vanilla.
 
-If you can't be sure that silverfish are always killed soon after they arrive, or if your farm relies on mobs pushing each other, set `disable-collisions: false`. With only the AI off it still saves about 20% to 35%, with no change in how silverfish interact with other mobs.
+`disable-collisions: true` still makes sense if you control every farm on the server and you are sure silverfish are always killed soon after they arrive, for example on a small server or a private farm. Then you get the bigger saving, but nothing stops them from piling up if someone leaves a farm running.
 
 Set `worlds` if you want silverfish outside your farm world to keep their AI, as explained above.
 
