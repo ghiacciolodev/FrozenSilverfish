@@ -4,8 +4,9 @@ enabled: true
 
 # Turn off entity collisions for frozen silverfish. Saves the most when many
 # silverfish are packed together, but they are no longer killed by entity
-# cramming, so they can pile up if nobody kills them. Set to false if needed.
-disable-collisions: true
+# cramming, so they pile up without limit if nobody kills them. Keep this
+# false unless silverfish are always killed soon after they arrive.
+disable-collisions: false
 
 # Frozen silverfish can't swim up, so they sink and drown after about 15
 # seconds in water. Keep this true if they travel through water streams.

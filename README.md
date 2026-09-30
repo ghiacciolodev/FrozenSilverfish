@@ -120,11 +120,11 @@ On the first start the plugin creates `plugins/FrozenSilverfish/config.yml` and 
 
 The config file is `plugins/FrozenSilverfish/config.yml`. After changing it, run `/fsf reload`. You don't need to restart the server.
 
-This is the default config. For a server where other players build their own farms, we recommend changing `disable-collisions` to `false`, see [Recommended configuration](#recommended-configuration):
+This is the default config. It is also the recommended one, see [Recommended configuration](#recommended-configuration):
 
 ```yaml
 enabled: true
-disable-collisions: true
+disable-collisions: false
 prevent-drowning: true
 push-off-campfires: true
 worlds: []
@@ -143,14 +143,14 @@ Turns the plugin on or off.
 
 ### disable-collisions
 
-Default: `true`
+Default: `false` (it was `true` in versions 1.0.1 to 1.1.0)
 
 Also turns off collisions for frozen silverfish. See [Collisions](#collisions) for the details.
 
 - `false`: the plugin doesn't touch collisions. Frozen silverfish push each other and other mobs like normal, and entity cramming still kills them when more than 24 are in the same spot. If you switch from `true` to `false`, the collisions the plugin turned off are turned back on.
 - `true`: frozen silverfish don't push each other or other mobs, and entity cramming doesn't affect them. Together with the AI off this saved about 35% to 57% on land and 42% to 49% in water, compared with about 20% to 35% with the AI off alone. The difference grows with the number of silverfish that are close together.
 
-The risk is that nothing limits how many silverfish can pile up. It is on by default because it gave the biggest saving in the tests, where silverfish were killed as soon as they arrived. On a server with farms built by other players we recommend `false`, because that is not guaranteed. See [Recommended configuration](#recommended-configuration).
+The risk is that nothing limits how many silverfish can pile up. That's why it is off by default. Turn it on only if silverfish are always killed soon after they arrive. See [Recommended configuration](#recommended-configuration).
 
 ### prevent-drowning
 
@@ -189,7 +189,7 @@ World names are case sensitive. If a name in the list doesn't match a loaded wor
 
 ### Recommended configuration
 
-For a server where players build their own farms, we recommend the default config with collisions left on:
+The recommended configuration is the default one. It is meant for a server where players build their own farms:
 
 ```yaml
 enabled: true
@@ -229,7 +229,7 @@ All tests were run on a local test server: Paper 26.2 build 129, Java 25.0.4, Wi
 
 ### Functional tests
 
-These tests were run on version 1.1.0 with a script that sends commands to the server through RCON and checks the result. Commands can't show whether an entity is collidable or has had its AI turned off by the API, so for these checks a small helper plugin was loaded on the test server only. It reads those values and can also act as "another plugin" that turns off the AI or the collisions of a silverfish.
+These tests were run on version 1.1.1 with a script that sends commands to the server through RCON and checks the result. Commands can't show whether an entity is collidable or has had its AI turned off by the API, so for these checks a small helper plugin was loaded on the test server only. It reads those values and can also act as "another plugin" that turns off the AI or the collisions of a silverfish.
 
 The scripts and the helper are in the [testing](testing) folder, with instructions to run them on your own test server.
 
@@ -316,8 +316,8 @@ There were two scenarios:
 For each scenario and number of silverfish there were three phases:
 
 1. AI on: the plugin disabled. This is how silverfish behave without the plugin.
-2. AI off: the plugin enabled with `disable-collisions: false`.
-3. AI off and no collisions: the plugin enabled with `disable-collisions: true` (the default config, all options on).
+2. AI off: the plugin enabled with `disable-collisions: false` (the default config since 1.1.1).
+3. AI off and no collisions: the plugin enabled with `disable-collisions: true`.
 
 In every phase the silverfish from the previous phase were removed and new ones were summoned at random positions on the floor. After 70 seconds the tick time was read with Paper's `/mspt` command (average over the last 10 seconds). The number of silverfish alive was checked at the end of each phase, and none had died in any phase.
 
@@ -349,8 +349,8 @@ The two passes agree within a few points, so the order of the phases didn't chan
 
 What this means:
 
-- With only the AI off (`disable-collisions: false`), silverfish cost about 20% to 35% less than normal ones.
-- With the default config (AI off and no collisions), they cost about 35% to 57% less. With many silverfish close together, that is about half.
+- With the default config (AI off, `disable-collisions: false`), silverfish cost about 20% to 35% less than normal ones.
+- With collisions off too (`disable-collisions: true`), they cost about 35% to 57% less. With many silverfish close together, that is about half.
 - Silverfish still run their physics, and collisions between them get more expensive the more they are packed together. That is why turning off collisions matters more at 2000 silverfish than at 500.
 - Silverfish in water cost more than on land in every phase, but the saving is about the same.
 - In the water scenario every frozen silverfish was out of air, so drowning prevention was working for all of them at the same time. Its cost is already included in the water numbers.
@@ -366,7 +366,7 @@ Limits of this test:
 
 ### Result on a real server
 
-This is not from the test server above, but from the server the plugin was made for, whose hardware I don't know. The largest armadillo farm there used to bring the server down to about 14 TPS while running. With the plugin installed and the default config, the server stays at 20 TPS most of the time, and drops to about 19.4 at worst.
+This is not from the test server above, but from the server the plugin was made for, whose hardware I don't know. The largest armadillo farm there used to bring the server down to about 14 TPS while running. With the plugin installed and collisions turned off, the server stays at 20 TPS most of the time, and drops to about 19.4 at worst.
 
 This was measured with version 1.0.x, before the campfire push. If that farm keeps its armadillos on campfires, many silverfish were probably burning before reaching the killing chamber, so with 1.1.0 more of them survive and the server has more silverfish to handle at the same time. See [Campfire tests](#campfire-tests).
 
