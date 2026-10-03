@@ -1,4 +1,13 @@
-# FrozenSilverfish
+<p align="center">
+  <img src="docs/icon.png" width="128" alt="">
+</p>
+
+<h1 align="center">FrozenSilverfish</h1>
+
+<p align="center">
+  <a href="https://hangar.papermc.io/ghiacciolodev/FrozenSilverfish">Hangar</a> ·
+  <a href="https://github.com/ghiacciolodev/FrozenSilverfish/releases">GitHub Releases</a>
+</p>
 
 A small Paper plugin that removes the AI from silverfish while keeping their physics. It was written to reduce the lag caused by armadillo farms, without changing how many silverfish they produce.
 
