@@ -10,7 +10,7 @@
   <a href="https://github.com/ghiacciolodev/FrozenSilverfish/releases">GitHub Releases</a>
 </p>
 
-A small Paper 26.2 plugin that removes the AI from silverfish while keeping their physics. It was written to reduce the lag caused by armadillo farms, without changing how many silverfish they produce.
+A small Paper plugin for 26.2 and 26.3 that removes the AI from silverfish while keeping their physics. It was written to reduce the lag caused by armadillo farms, without changing how many silverfish they produce.
 
 ## Why
 
