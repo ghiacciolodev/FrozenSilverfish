@@ -112,8 +112,8 @@ Two things to know:
 
 ## Requirements
 
-- Paper 26.2
-- Java 25 (Paper 26.2 needs it anyway)
+- Paper 26.2 or 26.3
+- Java 25 (Paper needs it anyway)
 
 The plugin uses only the Paper API. It has no other dependencies.
 
@@ -421,7 +421,7 @@ On Windows use `gradlew.bat build`. The jar ends up in `build/libs`.
 
 Every push to the repository is also built by GitHub Actions, see [.github/workflows/build.yml](.github/workflows/build.yml). The jar of each build can be downloaded from the Actions tab.
 
-The Paper API version is pinned in `build.gradle.kts` to the build the plugin was tested with (`26.2.build.129-stable`). Change it on purpose after testing with a newer build.
+The Paper API version is pinned in `build.gradle.kts` to the build the plugin was tested with (`26.3.build.248-stable`). Change it on purpose after testing with a newer build.
 
 ## License
 

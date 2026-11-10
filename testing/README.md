@@ -14,7 +14,7 @@ Don't run them on a server with players. They build structures, summon and kill 
 
 ## Setting up the test server
 
-1. Use a fresh Paper 26.2 server with a flat world. The scripts expect the ground at y -60, which is the default flat world. In `server.properties`:
+1. Use a fresh Paper 26.3 server with a flat world. The scripts expect the ground at y -60, which is the default flat world. In `server.properties`:
 
    ```
    level-type=minecraft\:flat
