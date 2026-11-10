@@ -5,11 +5,12 @@
 <h1 align="center">FrozenSilverfish</h1>
 
 <p align="center">
+  <a href="https://modrinth.com/plugin/frozensilverfish">Modrinth</a> ·
   <a href="https://hangar.papermc.io/ghiacciolodev/FrozenSilverfish">Hangar</a> ·
   <a href="https://github.com/ghiacciolodev/FrozenSilverfish/releases">GitHub Releases</a>
 </p>
 
-A small Paper plugin that removes the AI from silverfish while keeping their physics. It was written to reduce the lag caused by armadillo farms, without changing how many silverfish they produce.
+A small Paper 26.2 plugin that removes the AI from silverfish while keeping their physics. It was written to reduce the lag caused by armadillo farms, without changing how many silverfish they produce.
 
 ## Why
 
